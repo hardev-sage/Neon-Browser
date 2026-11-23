@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neon</title>
+</head>
+<body data-density="comfortable" data-pane-layout="single">
+  <svg width="0" height="0" aria-hidden="true" focusable="false">
+    <symbol id="icon-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="icon-forward" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="icon-reload" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></symbol>
+    <symbol id="icon-split" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM12 5v14"/></symbol>
+    <symbol id="icon-compact" viewBox="0 0 24 24"><path d="M5 10h14M5 14h14"/></symbol>
+    <symbol id="icon-menu" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  </svg>
+
+  <a class="skip-to-page-link" href="#page-area">Skip to page</a>
+
+  <header class="browser-chrome">
+    <div class="tab-strip">
+      <button class="workspace-switcher" type="button" aria-haspopup="menu" aria-label="Switch workspace">
+        <span data-workspace-name>Personal</span>
+      </button>
+
+      <nav class="tab-navigation" aria-label="Open tabs">
+        <ul class="tab-list" role="tablist">
+          <li class="tab-item" role="presentation">
+            <button class="tab-button" type="button" role="tab" id="tab-1" aria-selected="true" aria-controls="page-pane-1">
+              <span data-tab-title>New tab</span>
+            </button>
+            <button class="tab-close-button" type="button" data-action="close-tab" aria-label="Close tab New tab">
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg>
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <button class="new-tab-button" type="button" data-action="new-tab" aria-label="New tab">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg>
+      </button>
+    </div>
+
+    <div class="navigation-toolbar" role="toolbar" aria-label="Navigation">
+      <button class="toolbar-button" type="button" data-action="go-back" aria-label="Back">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-back"/></svg>
+      </button>
+      <button class="toolbar-button" type="button" data-action="go-forward" aria-label="Forward">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-forward"/></svg>
+      </button>
+      <button class="toolbar-button" type="button" data-action="reload-page" aria-label="Reload page">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-reload"/></svg>
+      </button>
+
+      <form class="address-form" role="search">
+        <input class="address-input" name="address" type="text" aria-label="Address or search" placeholder="Search or enter address. Use !bang for shortcuts" autocomplete="off" spellcheck="false">
+      </form>
+
+      <select class="search-provider-select" name="search-provider" aria-label="Search provider">
+        <option value="duckduckgo">DuckDuckGo</option>
+        <option value="duckduckgo-lite">DuckDuckGo Lite</option>
+        <option value="brave-search">Brave Search</option>
+      </select>
+
+      <button class="toolbar-button" type="button" data-action="toggle-split-view" aria-pressed="false" aria-label="Split view">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-split"/></svg>
+      </button>
+      <button class="toolbar-button" type="button" data-action="toggle-compact-mode" aria-pressed="false" aria-label="Compact mode">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-compact"/></svg>
+      </button>
+      <button class="toolbar-button" type="button" aria-haspopup="menu" aria-label="Main menu">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-menu"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="page-area" id="page-area">
+    <section class="page-pane" id="page-pane-1" role="tabpanel" aria-labelledby="tab-1"></section>
+  </main>
+</body>
+</html>
