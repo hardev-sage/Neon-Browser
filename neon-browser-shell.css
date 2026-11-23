@@ -1,4 +1,4 @@
-/* Version 4 - neon-browser-shell.css */
+/* Version 5 - neon-browser-shell.css */
 :root {
   color-scheme: light dark;
   --font-family-interface: system-ui, sans-serif;
@@ -10,6 +10,7 @@
   --size-focus-ring: 2px;
   --size-accent-bar: 2px;
   --size-pane-resizer: 0.375rem;
+  --size-pane-resizer-grab-margin: 0.375rem;
   --space-chrome-gap: 0.375rem;
   --space-control-inline: 0.75rem;
   --space-workspace-dot-gap: 0.5rem;
@@ -44,6 +45,11 @@ body {
   font: var(--font-size-interface) var(--font-family-interface);
   color: var(--color-text-primary);
   background: var(--color-toolbar-background);
+}
+
+body:has(.pane-resizer[data-dragging]) {
+  cursor: col-resize;
+  user-select: none;
 }
 
 :focus-visible {
@@ -299,8 +305,11 @@ body {
 }
 
 body[data-pane-layout="split"] .page-area {
-  --pane-first-size: 50%;
-  grid-template-columns: minmax(0, var(--pane-first-size)) var(--size-pane-resizer) minmax(0, 1fr);
+  --pane-first-ratio: 0.5;
+  grid-template-columns:
+    calc((100% - var(--size-pane-resizer)) * var(--pane-first-ratio))
+    var(--size-pane-resizer)
+    minmax(0, 1fr);
 }
 
 .page-pane {
@@ -310,9 +319,17 @@ body[data-pane-layout="split"] .page-area {
 }
 
 .pane-resizer {
+  position: relative;
   background: var(--color-chrome-border);
   cursor: col-resize;
   touch-action: none;
+  user-select: none;
+}
+
+.pane-resizer::before {
+  position: absolute;
+  inset: 0 calc(var(--size-pane-resizer-grab-margin) * -1);
+  content: "";
 }
 
 .pane-resizer:hover,
