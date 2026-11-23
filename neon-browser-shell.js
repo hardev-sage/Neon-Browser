@@ -1,3 +1,4 @@
+// Version 3 - neon-browser-shell.js
 const searchProviderUrls = {
   "duckduckgo": "https://duckduckgo.com/?q=",
   "duckduckgo-lite": "https://lite.duckduckgo.com/lite/?q=",
@@ -7,6 +8,10 @@ const bangSearchUrl = "https://duckduckgo.com/?q=";
 const bangPattern = /(^|\s)![A-Za-z0-9]+(\s|$)/;
 const webAddressPattern = /^[^\s/]+\.[^\s/]+(\/\S*)?$/;
 const fullUrlPattern = /^https?:\/\/\S+$/i;
+
+const paneSizeMinimumPercent = 20;
+const paneSizeMaximumPercent = 80;
+const paneSizeKeyboardStepPercent = 5;
 
 const pageArea = document.querySelector(".page-area");
 const firstPagePane = document.getElementById("page-pane-1");
@@ -110,17 +115,44 @@ function toggleCompactMode() {
   emit("neon:density-changed", { density: document.body.dataset.density });
 }
 
+function setFirstPaneSize(resizer, percent) {
+  const clampedPercent = Math.min(paneSizeMaximumPercent, Math.max(paneSizeMinimumPercent, percent));
+  pageArea.style.setProperty("--pane-first-size", `${clampedPercent}%`);
+  resizer.setAttribute("aria-valuenow", String(Math.round(clampedPercent)));
+}
+
+function createPaneResizer() {
+  const resizer = document.createElement("div");
+  resizer.className = "pane-resizer";
+  resizer.id = "pane-resizer";
+  resizer.tabIndex = 0;
+  resizer.setAttribute("role", "separator");
+  resizer.setAttribute("aria-orientation", "vertical");
+  resizer.setAttribute("aria-label", "Resize panes");
+  resizer.setAttribute("aria-controls", "page-pane-1");
+  resizer.setAttribute("aria-valuemin", String(paneSizeMinimumPercent));
+  resizer.setAttribute("aria-valuemax", String(paneSizeMaximumPercent));
+  resizer.setAttribute("aria-valuenow", "50");
+  return resizer;
+}
+
+function createSecondPagePane() {
+  const secondPagePane = document.createElement("section");
+  secondPagePane.className = "page-pane";
+  secondPagePane.id = "page-pane-2";
+  secondPagePane.setAttribute("aria-label", "Second page");
+  return secondPagePane;
+}
+
 function toggleSplitView() {
   const isSplit = document.body.dataset.paneLayout !== "split";
   document.body.dataset.paneLayout = isSplit ? "split" : "single";
   if (isSplit) {
-    const secondPagePane = document.createElement("section");
-    secondPagePane.className = "page-pane";
-    secondPagePane.id = "page-pane-2";
-    secondPagePane.setAttribute("aria-label", "Second page");
-    pageArea.append(secondPagePane);
+    pageArea.append(createPaneResizer(), createSecondPagePane());
   } else {
+    document.getElementById("pane-resizer").remove();
     document.getElementById("page-pane-2").remove();
+    pageArea.style.removeProperty("--pane-first-size");
   }
   splitViewButton.setAttribute("aria-pressed", String(isSplit));
   emit("neon:pane-layout-changed", { layout: document.body.dataset.paneLayout });
@@ -165,6 +197,41 @@ document.addEventListener("keydown", (event) => {
   }
   event.preventDefault();
   shortcutActions[key]();
+});
+
+pageArea.addEventListener("pointerdown", (event) => {
+  const resizer = event.target.closest(".pane-resizer");
+  if (!resizer) {
+    return;
+  }
+  resizer.setPointerCapture(event.pointerId);
+  resizer.dataset.dragging = "";
+});
+
+pageArea.addEventListener("pointermove", (event) => {
+  const resizer = event.target.closest(".pane-resizer");
+  if (!resizer || !("dragging" in resizer.dataset)) {
+    return;
+  }
+  const areaBounds = pageArea.getBoundingClientRect();
+  setFirstPaneSize(resizer, ((event.clientX - areaBounds.left) / areaBounds.width) * 100);
+});
+
+pageArea.addEventListener("pointerup", (event) => {
+  const resizer = event.target.closest(".pane-resizer");
+  if (resizer) {
+    delete resizer.dataset.dragging;
+  }
+});
+
+pageArea.addEventListener("keydown", (event) => {
+  const resizer = event.target.closest(".pane-resizer");
+  if (!resizer || !["ArrowLeft", "ArrowRight"].includes(event.key)) {
+    return;
+  }
+  event.preventDefault();
+  const step = event.key === "ArrowRight" ? paneSizeKeyboardStepPercent : -paneSizeKeyboardStepPercent;
+  setFirstPaneSize(resizer, Number(resizer.getAttribute("aria-valuenow")) + step);
 });
 
 tabList.addEventListener("click", (event) => {
