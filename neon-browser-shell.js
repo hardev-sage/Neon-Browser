@@ -1,4 +1,4 @@
-// Version 4 - neon-browser-shell.js
+// Version 5 - neon-browser-shell.js
 const searchProviderUrls = {
   "duckduckgo": "https://duckduckgo.com/?q=",
   "duckduckgo-lite": "https://lite.duckduckgo.com/lite/?q=",
@@ -187,7 +187,7 @@ function toggleCompactMode() {
 
 function setFirstPaneSize(resizer, percent) {
   const clampedPercent = Math.min(paneSizeMaximumPercent, Math.max(paneSizeMinimumPercent, percent));
-  pageArea.style.setProperty("--pane-first-size", `${clampedPercent}%`);
+  pageArea.style.setProperty("--pane-first-ratio", String(clampedPercent / 100));
   resizer.setAttribute("aria-valuenow", String(Math.round(clampedPercent)));
 }
 
@@ -222,7 +222,7 @@ function toggleSplitView() {
   } else {
     document.getElementById("pane-resizer").remove();
     document.getElementById("page-pane-2").remove();
-    pageArea.style.removeProperty("--pane-first-size");
+    pageArea.style.removeProperty("--pane-first-ratio");
   }
   splitViewButton.setAttribute("aria-pressed", String(isSplit));
   emit("neon:pane-layout-changed", { layout: document.body.dataset.paneLayout });
@@ -300,6 +300,7 @@ pageArea.addEventListener("pointerdown", (event) => {
   if (!resizer) {
     return;
   }
+  event.preventDefault();
   resizer.setPointerCapture(event.pointerId);
   resizer.dataset.dragging = "";
 });
@@ -310,10 +311,12 @@ pageArea.addEventListener("pointermove", (event) => {
     return;
   }
   const areaBounds = pageArea.getBoundingClientRect();
-  setFirstPaneSize(resizer, ((event.clientX - areaBounds.left) / areaBounds.width) * 100);
+  const resizerWidth = resizer.offsetWidth;
+  const firstPaneWidth = event.clientX - areaBounds.left - resizerWidth / 2;
+  setFirstPaneSize(resizer, (firstPaneWidth / (areaBounds.width - resizerWidth)) * 100);
 });
 
-pageArea.addEventListener("pointerup", (event) => {
+pageArea.addEventListener("lostpointercapture", (event) => {
   const resizer = event.target.closest(".pane-resizer");
   if (resizer) {
     delete resizer.dataset.dragging;
