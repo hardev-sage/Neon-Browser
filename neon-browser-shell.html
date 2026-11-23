@@ -1,4 +1,4 @@
-<!-- Version 3 - neon-browser-shell.html -->
+<!-- Version 4 - neon-browser-shell.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,25 +20,36 @@
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   </svg>
 
+  <template id="tab-item-template">
+    <li class="tab-item" role="presentation">
+      <button class="tab-button" type="button" role="tab" aria-controls="page-pane-1">
+        <span data-tab-title></span>
+      </button>
+      <button class="tab-close-button" type="button" data-action="close-tab">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg>
+      </button>
+    </li>
+  </template>
+
+  <template id="workspace-menu-item-template">
+    <li role="none">
+      <button class="workspace-menu-item" type="button" role="menuitemradio"></button>
+    </li>
+  </template>
+
   <a class="skip-to-page-link" href="#page-area">Skip to page</a>
 
   <header class="browser-chrome">
     <div class="tab-strip">
-      <button class="workspace-switcher" type="button" aria-haspopup="menu" aria-label="Switch workspace">
-        <span data-workspace-name>Personal</span>
-      </button>
+      <div class="workspace-picker">
+        <button class="workspace-switcher" type="button" data-action="toggle-workspace-menu" aria-haspopup="menu" aria-expanded="false" aria-controls="workspace-menu">
+          <span data-workspace-name></span>
+        </button>
+        <ul class="workspace-menu" id="workspace-menu" role="menu" aria-label="Workspaces" hidden></ul>
+      </div>
 
       <nav class="tab-navigation" aria-label="Open tabs">
-        <ul class="tab-list" role="tablist">
-          <li class="tab-item" role="presentation">
-            <button class="tab-button" type="button" role="tab" id="tab-1" aria-selected="true" aria-controls="page-pane-1">
-              <span data-tab-title>New tab</span>
-            </button>
-            <button class="tab-close-button" type="button" data-action="close-tab" aria-label="Close tab New tab">
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg>
-            </button>
-          </li>
-        </ul>
+        <ul class="tab-list" role="tablist"></ul>
       </nav>
 
       <button class="new-tab-button" type="button" data-action="new-tab" aria-label="New tab">
@@ -80,7 +91,7 @@
   </header>
 
   <main class="page-area" id="page-area">
-    <section class="page-pane" id="page-pane-1" role="tabpanel" aria-labelledby="tab-1"></section>
+    <section class="page-pane" id="page-pane-1" role="tabpanel"></section>
   </main>
 </body>
 </html>
