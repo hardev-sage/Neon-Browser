@@ -1,4 +1,4 @@
-// Version 3 - neon-browser-shell.js
+// Version 4 - neon-browser-shell.js
 const searchProviderUrls = {
   "duckduckgo": "https://duckduckgo.com/?q=",
   "duckduckgo-lite": "https://lite.duckduckgo.com/lite/?q=",
@@ -9,6 +9,7 @@ const bangPattern = /(^|\s)![A-Za-z0-9]+(\s|$)/;
 const webAddressPattern = /^[^\s/]+\.[^\s/]+(\/\S*)?$/;
 const fullUrlPattern = /^https?:\/\/\S+$/i;
 
+const newTabTitle = "New tab";
 const paneSizeMinimumPercent = 20;
 const paneSizeMaximumPercent = 80;
 const paneSizeKeyboardStepPercent = 5;
@@ -16,24 +17,40 @@ const paneSizeKeyboardStepPercent = 5;
 const pageArea = document.querySelector(".page-area");
 const firstPagePane = document.getElementById("page-pane-1");
 const tabList = document.querySelector(".tab-list");
+const workspaceSwitcherButton = document.querySelector(".workspace-switcher");
+const workspaceMenu = document.getElementById("workspace-menu");
+const tabItemTemplate = document.getElementById("tab-item-template");
+const workspaceMenuItemTemplate = document.getElementById("workspace-menu-item-template");
 const addressForm = document.querySelector(".address-form");
 const addressInput = document.querySelector(".address-input");
 const searchProviderSelect = document.querySelector(".search-provider-select");
 const compactModeButton = document.querySelector('[data-action="toggle-compact-mode"]');
 const splitViewButton = document.querySelector('[data-action="toggle-split-view"]');
 
-let nextTabNumber = 2;
+let nextTabNumber = 1;
+
+function createTab() {
+  return { id: `tab-${nextTabNumber++}`, title: newTabTitle, url: "" };
+}
+
+function createWorkspace(id, name) {
+  const firstTab = createTab();
+  return { id, name, tabs: [firstTab], selectedTabId: firstTab.id };
+}
+
+const workspaces = [
+  createWorkspace("personal", "Personal"),
+  createWorkspace("development", "Development"),
+  createWorkspace("study", "Study"),
+];
+let activeWorkspace = workspaces[0];
 
 function emit(eventName, detail = {}) {
   document.dispatchEvent(new CustomEvent(eventName, { detail }));
 }
 
-function getTabButtons() {
-  return [...tabList.querySelectorAll('[role="tab"]')];
-}
-
-function getSelectedTabButton() {
-  return tabList.querySelector('[role="tab"][aria-selected="true"]');
+function getSelectedTab() {
+  return activeWorkspace.tabs.find((tab) => tab.id === activeWorkspace.selectedTabId);
 }
 
 function resolveAddress(text) {
@@ -49,63 +66,116 @@ function resolveAddress(text) {
   return searchProviderUrls[searchProviderSelect.value] + encodeURIComponent(text);
 }
 
-function setTabTitle(tabButton, title) {
-  tabButton.querySelector("[data-tab-title]").textContent = title;
-  tabButton
-    .closest(".tab-item")
-    .querySelector(".tab-close-button")
-    .setAttribute("aria-label", `Close tab ${title}`);
+function createTabItem(tab) {
+  const isSelected = tab.id === activeWorkspace.selectedTabId;
+  const tabItem = tabItemTemplate.content.firstElementChild.cloneNode(true);
+  const tabButton = tabItem.querySelector('[role="tab"]');
+  tabItem.dataset.tabId = tab.id;
+  tabButton.id = tab.id;
+  tabButton.setAttribute("aria-selected", String(isSelected));
+  tabButton.tabIndex = isSelected ? 0 : -1;
+  tabButton.querySelector("[data-tab-title]").textContent = tab.title;
+  tabItem.querySelector(".tab-close-button").setAttribute("aria-label", `Close tab ${tab.title}`);
+  return tabItem;
 }
 
-function selectTab(selectedTabButton) {
-  for (const tabButton of getTabButtons()) {
-    const isSelected = tabButton === selectedTabButton;
-    tabButton.setAttribute("aria-selected", String(isSelected));
-    tabButton.tabIndex = isSelected ? 0 : -1;
-  }
+function renderTabs() {
+  tabList.replaceChildren(...activeWorkspace.tabs.map(createTabItem));
+  const selectedTabButton = document.getElementById(activeWorkspace.selectedTabId);
   firstPagePane.setAttribute("aria-labelledby", selectedTabButton.id);
-  emit("neon:tab-selected", { tabId: selectedTabButton.id });
+  selectedTabButton.scrollIntoView({ inline: "nearest" });
+  addressInput.value = getSelectedTab().url;
+}
+
+function selectTab(tabId) {
+  activeWorkspace.selectedTabId = tabId;
+  renderTabs();
+  emit("neon:tab-selected", { tabId });
 }
 
 function addTab() {
-  const tabNumber = nextTabNumber++;
-  const tabItem = document.createElement("li");
-  tabItem.className = "tab-item";
-  tabItem.setAttribute("role", "presentation");
-  tabItem.innerHTML = `
-    <button class="tab-button" type="button" role="tab" id="tab-${tabNumber}" aria-selected="false" aria-controls="page-pane-1">
-      <span data-tab-title>New tab</span>
-    </button>
-    <button class="tab-close-button" type="button" data-action="close-tab" aria-label="Close tab New tab">
-      <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg>
-    </button>`;
-  tabList.append(tabItem);
-  const tabButton = tabItem.querySelector('[role="tab"]');
-  selectTab(tabButton);
-  tabButton.scrollIntoView({ inline: "nearest" });
-  emit("neon:tab-created", { tabId: tabButton.id });
+  const tab = createTab();
+  activeWorkspace.tabs.push(tab);
+  emit("neon:tab-created", { tabId: tab.id });
+  selectTab(tab.id);
 }
 
-function closeTab(tabItem) {
-  const tabButton = tabItem.querySelector('[role="tab"]');
-  const wasSelected = tabButton.getAttribute("aria-selected") === "true";
-  const neighborItem = tabItem.nextElementSibling ?? tabItem.previousElementSibling;
-  tabItem.remove();
-  emit("neon:tab-closed", { tabId: tabButton.id });
-  if (!neighborItem) {
+function closeTab(tabId) {
+  const tabs = activeWorkspace.tabs;
+  const closedIndex = tabs.findIndex((tab) => tab.id === tabId);
+  tabs.splice(closedIndex, 1);
+  emit("neon:tab-closed", { tabId });
+  if (tabs.length === 0) {
     addTab();
-  } else if (wasSelected) {
-    selectTab(neighborItem.querySelector('[role="tab"]'));
+  } else if (activeWorkspace.selectedTabId === tabId) {
+    selectTab(tabs[Math.min(closedIndex, tabs.length - 1)].id);
+  } else {
+    renderTabs();
   }
 }
 
 function closeSelectedTab() {
-  closeTab(getSelectedTabButton().closest(".tab-item"));
+  closeTab(activeWorkspace.selectedTabId);
+}
+
+function navigateTo(url) {
+  const tab = getSelectedTab();
+  tab.url = url;
+  tab.title = new URL(url).hostname;
+  renderTabs();
+  emit("neon:navigate", { url });
 }
 
 function focusAddressInput() {
   addressInput.focus();
   addressInput.select();
+}
+
+function renderWorkspaceMenu() {
+  workspaceMenu.replaceChildren(
+    ...workspaces.map((workspace) => {
+      const menuItem = workspaceMenuItemTemplate.content.firstElementChild.cloneNode(true);
+      const menuItemButton = menuItem.querySelector("button");
+      menuItemButton.dataset.workspaceId = workspace.id;
+      menuItemButton.textContent = workspace.name;
+      menuItemButton.tabIndex = -1;
+      menuItemButton.setAttribute("aria-checked", String(workspace === activeWorkspace));
+      return menuItem;
+    }),
+  );
+}
+
+function renderWorkspaceSwitcher() {
+  workspaceSwitcherButton.querySelector("[data-workspace-name]").textContent = activeWorkspace.name;
+  workspaceSwitcherButton.setAttribute("aria-label", `${activeWorkspace.name}, switch workspace`);
+}
+
+function openWorkspaceMenu() {
+  workspaceMenu.hidden = false;
+  workspaceSwitcherButton.setAttribute("aria-expanded", "true");
+  workspaceMenu.querySelector('[aria-checked="true"]').focus();
+}
+
+function closeWorkspaceMenu() {
+  workspaceMenu.hidden = true;
+  workspaceSwitcherButton.setAttribute("aria-expanded", "false");
+}
+
+function toggleWorkspaceMenu() {
+  if (workspaceMenu.hidden) {
+    openWorkspaceMenu();
+  } else {
+    closeWorkspaceMenu();
+  }
+}
+
+function switchWorkspace(workspaceId) {
+  activeWorkspace = workspaces.find((workspace) => workspace.id === workspaceId);
+  renderWorkspaceMenu();
+  renderWorkspaceSwitcher();
+  renderTabs();
+  closeWorkspaceMenu();
+  emit("neon:workspace-changed", { workspaceId });
 }
 
 function toggleCompactMode() {
@@ -158,15 +228,10 @@ function toggleSplitView() {
   emit("neon:pane-layout-changed", { layout: document.body.dataset.paneLayout });
 }
 
-function navigateTo(url) {
-  addressInput.value = url;
-  setTabTitle(getSelectedTabButton(), new URL(url).hostname);
-  emit("neon:navigate", { url });
-}
-
 const buttonActions = {
   "new-tab": addTab,
-  "close-tab": (closeButton) => closeTab(closeButton.closest(".tab-item")),
+  "close-tab": (closeButton) => closeTab(closeButton.closest(".tab-item").dataset.tabId),
+  "toggle-workspace-menu": toggleWorkspaceMenu,
   "toggle-compact-mode": toggleCompactMode,
   "toggle-split-view": toggleSplitView,
 };
@@ -178,6 +243,9 @@ const shortcutActions = {
 };
 
 document.addEventListener("click", (event) => {
+  if (!workspaceMenu.hidden && !event.target.closest(".workspace-picker")) {
+    closeWorkspaceMenu();
+  }
   const actionElement = event.target.closest("[data-action]");
   if (!actionElement) {
     return;
@@ -197,6 +265,34 @@ document.addEventListener("keydown", (event) => {
   }
   event.preventDefault();
   shortcutActions[key]();
+});
+
+workspaceMenu.addEventListener("click", (event) => {
+  const menuItemButton = event.target.closest("[data-workspace-id]");
+  if (menuItemButton) {
+    switchWorkspace(menuItemButton.dataset.workspaceId);
+    workspaceSwitcherButton.focus();
+  }
+});
+
+workspaceMenu.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeWorkspaceMenu();
+    workspaceSwitcherButton.focus();
+    return;
+  }
+  if (event.key === "Tab") {
+    closeWorkspaceMenu();
+    return;
+  }
+  if (!["ArrowUp", "ArrowDown"].includes(event.key)) {
+    return;
+  }
+  event.preventDefault();
+  const menuItemButtons = [...workspaceMenu.querySelectorAll("button")];
+  const step = event.key === "ArrowDown" ? 1 : -1;
+  const currentIndex = menuItemButtons.indexOf(document.activeElement);
+  menuItemButtons[(currentIndex + step + menuItemButtons.length) % menuItemButtons.length].focus();
 });
 
 pageArea.addEventListener("pointerdown", (event) => {
@@ -237,7 +333,7 @@ pageArea.addEventListener("keydown", (event) => {
 tabList.addEventListener("click", (event) => {
   const tabButton = event.target.closest('[role="tab"]');
   if (tabButton) {
-    selectTab(tabButton);
+    selectTab(tabButton.id);
   }
 });
 
@@ -246,11 +342,12 @@ tabList.addEventListener("keydown", (event) => {
   if (!currentTabButton || !["ArrowLeft", "ArrowRight"].includes(event.key)) {
     return;
   }
-  const tabButtons = getTabButtons();
+  const tabs = activeWorkspace.tabs;
   const step = event.key === "ArrowRight" ? 1 : -1;
-  const nextIndex = (tabButtons.indexOf(currentTabButton) + step + tabButtons.length) % tabButtons.length;
-  tabButtons[nextIndex].focus();
-  selectTab(tabButtons[nextIndex]);
+  const currentIndex = tabs.findIndex((tab) => tab.id === currentTabButton.id);
+  const nextTab = tabs[(currentIndex + step + tabs.length) % tabs.length];
+  selectTab(nextTab.id);
+  document.getElementById(nextTab.id).focus();
 });
 
 addressForm.addEventListener("submit", (event) => {
@@ -261,4 +358,6 @@ addressForm.addEventListener("submit", (event) => {
   }
 });
 
-selectTab(getTabButtons()[0]);
+renderWorkspaceMenu();
+renderWorkspaceSwitcher();
+renderTabs();
