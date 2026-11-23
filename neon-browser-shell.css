@@ -1,4 +1,4 @@
-/* Version 3 - neon-browser-shell.css */
+/* Version 4 - neon-browser-shell.css */
 :root {
   color-scheme: light dark;
   --font-family-interface: system-ui, sans-serif;
@@ -6,6 +6,7 @@
   --size-control-height: 2.25rem;
   --size-icon: 1.125rem;
   --size-tab-width: 12rem;
+  --size-menu-width: 12rem;
   --size-focus-ring: 2px;
   --size-accent-bar: 2px;
   --size-pane-resizer: 0.375rem;
@@ -14,6 +15,7 @@
   --space-workspace-dot-gap: 0.5rem;
   --radius-control: 0.375rem;
   --radius-address-field: 999px;
+  --layer-workspace-menu: 2;
   --color-strip-background: light-dark(#dcd9d2, #141516);
   --color-toolbar-background: light-dark(#f4f2ee, #232528);
   --color-chrome-border: light-dark(#c4c0b8, #36383d);
@@ -98,6 +100,7 @@ body {
 }
 
 .workspace-switcher,
+.workspace-menu-item,
 .tab-close-button,
 .new-tab-button,
 .toolbar-button {
@@ -122,8 +125,13 @@ body {
   padding: 0;
 }
 
-.workspace-switcher,
 .new-tab-button {
+  flex: none;
+  margin-bottom: var(--space-chrome-gap);
+}
+
+.workspace-picker {
+  position: relative;
   flex: none;
   margin-bottom: var(--space-chrome-gap);
 }
@@ -142,11 +150,38 @@ body {
   border-radius: 50%;
 }
 
+.workspace-menu {
+  position: absolute;
+  top: calc(100% + var(--space-chrome-gap));
+  left: 0;
+  z-index: var(--layer-workspace-menu);
+  box-sizing: border-box;
+  min-width: var(--size-menu-width);
+  margin: 0;
+  padding: var(--space-chrome-gap);
+  list-style: none;
+  background: var(--color-toolbar-background);
+  border: 1px solid var(--color-chrome-border);
+  border-radius: var(--radius-control);
+}
+
+.workspace-menu-item {
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
+}
+
+.workspace-menu-item[aria-checked="true"] {
+  font-weight: 600;
+  box-shadow: inset var(--size-accent-bar) 0 0 var(--color-accent);
+}
+
 .workspace-switcher:hover,
 .new-tab-button:hover {
   background: var(--color-strip-control-hover);
 }
 
+.workspace-menu-item:hover,
 .toolbar-button:hover,
 .tab-close-button:hover {
   background: var(--color-control-hover);
@@ -306,6 +341,7 @@ body[data-pane-layout="split"] .page-area {
 
 @media (prefers-reduced-motion: no-preference) {
   .workspace-switcher,
+  .workspace-menu-item,
   .tab-item,
   .tab-close-button,
   .new-tab-button,
