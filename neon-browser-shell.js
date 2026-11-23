@@ -9,6 +9,7 @@ const webAddressPattern = /^[^\s/]+\.[^\s/]+(\/\S*)?$/;
 const fullUrlPattern = /^https?:\/\/\S+$/i;
 
 const pageArea = document.querySelector(".page-area");
+const firstPagePane = document.getElementById("page-pane-1");
 const tabList = document.querySelector(".tab-list");
 const addressForm = document.querySelector(".address-form");
 const addressInput = document.querySelector(".address-input");
@@ -26,6 +27,10 @@ function getTabButtons() {
   return [...tabList.querySelectorAll('[role="tab"]')];
 }
 
+function getSelectedTabButton() {
+  return tabList.querySelector('[role="tab"][aria-selected="true"]');
+}
+
 function resolveAddress(text) {
   if (bangPattern.test(text)) {
     return bangSearchUrl + encodeURIComponent(text);
@@ -39,13 +44,21 @@ function resolveAddress(text) {
   return searchProviderUrls[searchProviderSelect.value] + encodeURIComponent(text);
 }
 
+function setTabTitle(tabButton, title) {
+  tabButton.querySelector("[data-tab-title]").textContent = title;
+  tabButton
+    .closest(".tab-item")
+    .querySelector(".tab-close-button")
+    .setAttribute("aria-label", `Close tab ${title}`);
+}
+
 function selectTab(selectedTabButton) {
   for (const tabButton of getTabButtons()) {
     const isSelected = tabButton === selectedTabButton;
     tabButton.setAttribute("aria-selected", String(isSelected));
     tabButton.tabIndex = isSelected ? 0 : -1;
   }
-  document.getElementById("page-pane-1").setAttribute("aria-labelledby", selectedTabButton.id);
+  firstPagePane.setAttribute("aria-labelledby", selectedTabButton.id);
   emit("neon:tab-selected", { tabId: selectedTabButton.id });
 }
 
@@ -68,8 +81,7 @@ function addTab() {
   emit("neon:tab-created", { tabId: tabButton.id });
 }
 
-function closeTab(closeButton) {
-  const tabItem = closeButton.closest(".tab-item");
+function closeTab(tabItem) {
   const tabButton = tabItem.querySelector('[role="tab"]');
   const wasSelected = tabButton.getAttribute("aria-selected") === "true";
   const neighborItem = tabItem.nextElementSibling ?? tabItem.previousElementSibling;
@@ -80,6 +92,15 @@ function closeTab(closeButton) {
   } else if (wasSelected) {
     selectTab(neighborItem.querySelector('[role="tab"]'));
   }
+}
+
+function closeSelectedTab() {
+  closeTab(getSelectedTabButton().closest(".tab-item"));
+}
+
+function focusAddressInput() {
+  addressInput.focus();
+  addressInput.select();
 }
 
 function toggleCompactMode() {
@@ -93,23 +114,35 @@ function toggleSplitView() {
   const isSplit = document.body.dataset.paneLayout !== "split";
   document.body.dataset.paneLayout = isSplit ? "split" : "single";
   if (isSplit) {
-    const secondPane = document.createElement("section");
-    secondPane.className = "page-pane";
-    secondPane.id = "page-pane-2";
-    secondPane.setAttribute("aria-label", "Second page");
-    pageArea.append(secondPane);
+    const secondPagePane = document.createElement("section");
+    secondPagePane.className = "page-pane";
+    secondPagePane.id = "page-pane-2";
+    secondPagePane.setAttribute("aria-label", "Second page");
+    pageArea.append(secondPagePane);
   } else {
-    pageArea.querySelector("#page-pane-2").remove();
+    document.getElementById("page-pane-2").remove();
   }
   splitViewButton.setAttribute("aria-pressed", String(isSplit));
   emit("neon:pane-layout-changed", { layout: document.body.dataset.paneLayout });
 }
 
-const localActions = {
+function navigateTo(url) {
+  addressInput.value = url;
+  setTabTitle(getSelectedTabButton(), new URL(url).hostname);
+  emit("neon:navigate", { url });
+}
+
+const buttonActions = {
   "new-tab": addTab,
-  "close-tab": closeTab,
+  "close-tab": (closeButton) => closeTab(closeButton.closest(".tab-item")),
   "toggle-compact-mode": toggleCompactMode,
   "toggle-split-view": toggleSplitView,
+};
+
+const shortcutActions = {
+  l: focusAddressInput,
+  t: addTab,
+  w: closeSelectedTab,
 };
 
 document.addEventListener("click", (event) => {
@@ -118,11 +151,20 @@ document.addEventListener("click", (event) => {
     return;
   }
   const action = actionElement.dataset.action;
-  if (action in localActions) {
-    localActions[action](actionElement);
+  if (action in buttonActions) {
+    buttonActions[action](actionElement);
   } else {
     emit("neon:command", { action });
   }
+});
+
+document.addEventListener("keydown", (event) => {
+  const key = event.key.toLowerCase();
+  if (!event.ctrlKey || !(key in shortcutActions)) {
+    return;
+  }
+  event.preventDefault();
+  shortcutActions[key]();
 });
 
 tabList.addEventListener("click", (event) => {
@@ -148,7 +190,7 @@ addressForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const text = addressInput.value.trim();
   if (text) {
-    emit("neon:navigate", { url: resolveAddress(text) });
+    navigateTo(resolveAddress(text));
   }
 });
 
